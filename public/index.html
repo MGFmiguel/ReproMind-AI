@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ReproMind AI | Investigação Inteligente</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+
+  <body>
+    <aside class="sidebar">
+      <div class="logo">Repro<span>Mind</span> AI</div>
+
+      <nav aria-label="Navegação principal" data-sidebar></nav>
+
+      <div class="sidebar-footer">Plataforma inteligente de investigação</div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">CENTRAL DE DESENVOLVIMENTO</p>
+          <h1>Dashboard</h1>
+          <p class="subtitle">
+            Investigue problemas com inteligência e organização.
+          </p>
+        </div>
+
+        <div class="status"><span></span> Sistema online</div>
+      </header>
+
+      <!-- Indicadores -->
+      <section class="stats">
+        <div class="stat-card">
+          <p>Total de ocorrências</p>
+          <h2 id="totalOcorrencias">0</h2>
+        </div>
+
+        <div class="stat-card">
+          <p>Ocorrências abertas</p>
+          <h2 id="abertas">0</h2>
+        </div>
+
+        <div class="stat-card">
+          <p>Em investigação</p>
+          <h2 id="emInvestigacao">0</h2>
+        </div>
+
+        <div class="stat-card">
+          <p>Prioridade alta</p>
+          <h2 id="prioridadeAlta">0</h2>
+        </div>
+      </section>
+
+      <!-- Gráficos -->
+      <section class="dashboard-charts">
+        <div class="chart-card">
+          <h3>Ocorrências por status</h3>
+          <div id="graficoStatus" class="grafico-barras"></div>
+        </div>
+
+        <div class="chart-card">
+          <h3>Ocorrências por prioridade</h3>
+          <div id="graficoPrioridade" class="grafico-barras"></div>
+        </div>
+      </section>
+
+      <!-- Conteúdo principal -->
+      <section class="content-grid">
+        <!-- Cadastro -->
+        <div class="panel" id="nova-ocorrencia">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">REGISTRO</p>
+              <h2>Nova ocorrência</h2>
+            </div>
+          </div>
+
+          <form id="formOcorrencia">
+            <label for="titulo">Título do problema</label>
+
+            <input
+              type="text"
+              id="titulo"
+              placeholder="Ex: Erro ao finalizar uma compra"
+              required
+            />
+
+            <label for="descricao">Descrição do problema</label>
+
+            <textarea
+              id="descricao"
+              placeholder="Descreva o que aconteceu..."
+              required
+            ></textarea>
+
+            <label for="categoria">Categoria</label>
+
+            <select id="categoria">
+              <option value="">Selecione uma categoria</option>
+              <option value="Frontend">Frontend</option>
+              <option value="Backend">Backend</option>
+              <option value="Banco de dados">Banco de dados</option>
+              <option value="Integração">Integração</option>
+              <option value="Outro">Outro</option>
+            </select>
+
+            <!-- Avaliação para cálculo da prioridade -->
+
+            <label for="impacto">Impacto do problema</label>
+
+            <select id="impacto">
+              <option value="">Avalie o impacto</option>
+              <option value="1">1 - Muito baixo</option>
+              <option value="2">2 - Baixo</option>
+              <option value="3">3 - Moderado</option>
+              <option value="4">4 - Alto</option>
+              <option value="5">5 - Muito alto</option>
+            </select>
+
+            <label for="frequencia">Frequência de ocorrência</label>
+
+            <select id="frequencia">
+              <option value="">Selecione a frequência</option>
+              <option value="1">1 - Raramente</option>
+              <option value="2">2 - Frequentemente</option>
+              <option value="3">3 - Sempre</option>
+            </select>
+
+            <label for="usuariosAfetados">Usuários afetados</label>
+
+            <select id="usuariosAfetados">
+              <option value="">Selecione</option>
+              <option value="1">1 - Poucos usuários</option>
+              <option value="2">2 - Vários usuários</option>
+              <option value="3">3 - Muitos usuários</option>
+            </select>
+
+            <label for="prioridade">Prioridade calculada</label>
+
+            <select id="prioridade">
+              <option value="Baixa">Baixa</option>
+              <option value="Média" selected>Média</option>
+              <option value="Alta">Alta</option>
+              <option value="Crítica">Crítica</option>
+            </select>
+
+            <button type="submit">Registrar ocorrência</button>
+
+            <p id="mensagem"></p>
+          </form>
+        </div>
+
+        <!-- Histórico recente -->
+        <div class="panel" id="historico">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">ACOMPANHAMENTO</p>
+              <h2>Últimas ocorrências</h2>
+            </div>
+          </div>
+
+          <div id="listaOcorrencias" class="occurrence-list">
+            <p class="empty">Carregando ocorrências...</p>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        ReproMind AI © 2026 — Investigação inteligente de problemas.
+      </footer>
+    </main>
+
+    <script src="js/auth.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>

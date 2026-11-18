@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Usuários | ReproMind AI</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="logo">Repro<span>Mind</span> AI</div>
+      <nav aria-label="Navegação principal" data-sidebar></nav>
+      <div class="sidebar-footer">Administração de acesso</div>
+    </aside>
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">ADMINISTRAÇÃO</p>
+          <h1>Usuários autorizados</h1>
+          <p class="subtitle">Crie contas para as pessoas que podem acessar o ReproMind AI.</p>
+        </div>
+      </header>
+      <section class="content-grid">
+        <section class="panel">
+          <div class="panel-heading"><h2>Criar usuário</h2></div>
+          <form id="formUsuario">
+            <label for="novoNomeUsuario">Nome de usuário</label>
+            <input id="novoNomeUsuario" required minlength="3" maxlength="32" autocomplete="off" />
+            <label for="senhaTemporaria">Senha temporária</label>
+            <input id="senhaTemporaria" type="password" required minlength="6" maxlength="128" autocomplete="new-password" />
+            <p class="form-help">A senha temporária deve ter ao menos 6 caracteres. A pessoa deverá trocá-la ao entrar.</p>
+            <button type="submit">Criar conta</button>
+            <p id="mensagemUsuario" role="status" aria-live="polite"></p>
+          </form>
+        </section>
+        <section class="panel">
+          <div class="panel-heading"><h2>Contas cadastradas</h2></div>
+          <div id="listaUsuarios" class="history-list"><p class="empty">Carregando usuários...</p></div>
+        </section>
+      </section>
+    </main>
+    <script src="js/auth.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/usuarios.js"></script>
+  </body>
+</html>

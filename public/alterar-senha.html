@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trocar senha | ReproMind AI</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body class="auth-page">
+    <main class="auth-card">
+      <div class="logo">Repro<span>Mind</span> AI</div>
+      <h1>Troque sua senha</h1>
+      <p>Por segurança, a senha temporária precisa ser trocada antes de continuar.</p>
+      <form id="formSenha">
+        <label for="senhaAtual">Senha atual</label>
+        <input id="senhaAtual" type="password" autocomplete="current-password" required maxlength="128" />
+        <label for="novaSenha">Nova senha</label>
+        <input id="novaSenha" type="password" autocomplete="new-password" required minlength="6" maxlength="128" />
+        <label for="confirmacao">Confirme a nova senha</label>
+        <input id="confirmacao" type="password" autocomplete="new-password" required minlength="6" maxlength="128" />
+        <button type="submit">Salvar nova senha</button>
+        <p id="mensagemSenha" role="status" aria-live="polite"></p>
+      </form>
+    </main>
+    <script src="js/senha.js"></script>
+  </body>
+</html>

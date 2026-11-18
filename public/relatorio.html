@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Relatório | ReproMind AI</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+
+  <body>
+    <aside class="sidebar">
+      <div class="logo">Repro<span>Mind</span> AI</div>
+
+      <nav aria-label="Navegação principal" data-sidebar></nav>
+
+      <div class="sidebar-footer">Plataforma inteligente de investigação</div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">DOCUMENTAÇÃO TÉCNICA</p>
+          <h1>Relatório de investigação</h1>
+
+          <p class="subtitle">
+            Resultado da coleta de informações da ocorrência.
+          </p>
+        </div>
+      </header>
+
+      <section class="panel report-panel">
+        <!-- Relatório técnico -->
+        <div id="relatorio">
+          <p class="empty">Carregando relatório...</p>
+        </div>
+
+        <!-- Ocorrências semelhantes -->
+        <section class="panel similar-panel">
+          <div class="panel-heading">
+            <p class="eyebrow">BASE DE CONHECIMENTO</p>
+            <h2>Ocorrências semelhantes</h2>
+
+            <p class="subtitle">
+              Consulte problemas anteriores que apresentam características
+              parecidas.
+            </p>
+          </div>
+
+          <div id="listaSimilares">
+            <p class="empty">Buscando ocorrências semelhantes...</p>
+          </div>
+        </section>
+
+        <!-- Análise inteligente -->
+        <div class="ai-analysis">
+          <div id="tipoAnalise" class="ai-mode"></div>
+
+          <h2>Análise inteligente</h2>
+
+          <p id="statusIA">
+            Solicite uma análise complementar da inteligência artificial.
+          </p>
+
+          <button id="analisarIA" type="button">Analisar com IA</button>
+
+          <div id="resultadoIA" class="ai-result"></div>
+        </div>
+
+        <!-- Histórico de análises -->
+        <section class="panel history-panel">
+          <div class="panel-heading">
+            <p class="eyebrow">EVOLUÇÃO DA INVESTIGAÇÃO</p>
+
+            <h2>Histórico de análises</h2>
+
+            <p class="subtitle">
+              Consulte as análises anteriores e acompanhe a evolução das
+              hipóteses.
+            </p>
+          </div>
+
+          <div id="historicoAnalises">
+            <p class="empty">Carregando histórico de análises...</p>
+          </div>
+
+          <!-- Linha do tempo da investigação -->
+          <div class="timeline-panel">
+            <h3>Linha do tempo da investigação</h3>
+
+            <p class="subtitle">
+              Acompanhe a evolução das análises realizadas.
+            </p>
+
+            <div id="linhaDoTempo">
+              <p class="empty">Carregando linha do tempo...</p>
+            </div>
+          </div>
+
+          <!-- Comparação de análises -->
+          <div class="comparison-panel">
+            <h3>Comparar análises</h3>
+
+            <p>
+              Selecione duas análises para visualizar a evolução da
+              investigação.
+            </p>
+
+            <div class="comparison-controls">
+              <select id="analiseAnterior">
+                <option value="">Análise anterior</option>
+              </select>
+
+              <select id="analiseAtual">
+                <option value="">Análise atual</option>
+              </select>
+
+              <button id="compararAnalises" type="button">Comparar</button>
+            </div>
+
+            <div id="resultadoComparacao"></div>
+          </div>
+        </section>
+
+        <!-- Botões -->
+        <button id="imprimir" type="button">Imprimir relatório</button>
+
+        <a href="/" class="back-link"> Voltar ao dashboard </a>
+      </section>
+    </main>
+
+    <script src="js/auth.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/relatorio.js"></script>
+  </body>
+</html>

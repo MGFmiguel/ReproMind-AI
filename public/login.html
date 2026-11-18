@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Entrar | ReproMind AI</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body class="auth-page">
+    <main class="auth-card">
+      <div class="logo">Repro<span>Mind</span> AI</div>
+      <h1>Acesse sua conta</h1>
+      <p>Entre com o nome de usuário criado pelo administrador.</p>
+      <form id="formLogin">
+        <label for="nomeUsuario">Nome de usuário</label>
+        <input id="nomeUsuario" name="nomeUsuario" autocomplete="username" required maxlength="32" />
+        <label for="senha">Senha</label>
+        <input id="senha" name="senha" type="password" autocomplete="current-password" required maxlength="128" />
+        <button type="submit">Entrar</button>
+        <p id="mensagemLogin" role="status" aria-live="polite"></p>
+      </form>
+    </main>
+    <script src="js/login.js"></script>
+  </body>
+</html>

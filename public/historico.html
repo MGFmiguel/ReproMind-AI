@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Histórico | ReproMind AI</title>
+
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="logo">Repro<span>Mind</span> AI</div>
+
+      <nav aria-label="Navegação principal" data-sidebar></nav>
+
+      <div class="sidebar-footer">Plataforma inteligente de investigação</div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">GERENCIAMENTO</p>
+          <h1>Histórico de ocorrências</h1>
+
+          <p class="subtitle">Consulte e acompanhe os problemas registrados.</p>
+        </div>
+      </header>
+
+      <section class="stats">
+        <div class="stat-card">
+          <p>Total registrado</p>
+          <h2 id="total">0</h2>
+        </div>
+
+        <div class="stat-card">
+          <p>Em aberto</p>
+          <h2 id="abertas">0</h2>
+        </div>
+
+        <div class="stat-card">
+          <p>Prioridade alta</p>
+          <h2 id="altas">0</h2>
+        </div>
+      </section>
+
+      <section class="panel history-panel">
+        <div class="panel-heading">
+          <p class="eyebrow">BASE DE OCORRÊNCIAS</p>
+          <h2>Registros do sistema</h2>
+        </div>
+
+        <div class="history-filters">
+          <input
+            type="text"
+            id="pesquisa"
+            placeholder="Pesquisar ocorrência..."
+          />
+
+          <select id="filtroPrioridade">
+            <option value="">Todas as prioridades</option>
+            <option value="Baixa">Baixa</option>
+            <option value="Média">Média</option>
+            <option value="Alta">Alta</option>
+            <option value="Crítica">Crítica</option>
+          </select>
+
+          <select id="filtroStatus">
+            <option value="">Todos os status</option>
+            <option value="Aberta">Aberta</option>
+            <option value="Em investigação">Em investigação</option>
+            <option value="Concluída">Concluída</option>
+          </select>
+        </div>
+
+        <div id="listaHistorico" class="history-list">
+          <p class="empty">Carregando histórico...</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="js/auth.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/historico.js"></script>
+  </body>
+</html>

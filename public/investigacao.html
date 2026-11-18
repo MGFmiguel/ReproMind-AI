@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Investigação | ReproMind AI</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="logo">Repro<span>Mind</span> AI</div>
+
+      <nav aria-label="Navegação principal" data-sidebar></nav>
+
+      <div class="sidebar-footer">Plataforma inteligente de investigação</div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">ANÁLISE INTELIGENTE</p>
+          <h1>Investigação da ocorrência</h1>
+          <p class="subtitle">
+            Responda às perguntas para aprofundar a análise do problema.
+          </p>
+        </div>
+        <div class="status"><span></span> Investigação ativa</div>
+      </header>
+
+      <section class="panel investigation-panel">
+        <div class="panel-heading">
+          <p class="eyebrow">REPromind AI ASSISTANT</p>
+          <h2 id="tituloInvestigacao">Preparando investigação...</h2>
+        </div>
+
+        <div id="chat" class="chat">
+          <div class="chat-message assistant">
+            Olá! Vou fazer algumas perguntas para entender melhor o problema.
+          </div>
+        </div>
+
+        <form id="formResposta" class="answer-form">
+          <label for="resposta">Sua resposta</label>
+
+          <textarea
+            id="resposta"
+            placeholder="Digite sua resposta..."
+            required
+          ></textarea>
+
+          <button type="submit" id="btnEnviar">Enviar resposta</button>
+
+          <p id="mensagemInvestigacao"></p>
+        </form>
+
+        <div id="conclusao" class="conclusion" hidden>
+          <h2>Coleta de informações concluída!</h2>
+          <p>
+            As respostas foram armazenadas. Agora já temos informações
+            adicionais para preparar o relatório da investigação.
+          </p>
+          <button id="gerarRelatorio" type="button">
+            Gerar relatório técnico
+          </button>
+          <a href="/" class="back-link">Voltar ao dashboard</a>
+        </div>
+      </section>
+    </main>
+
+    <script src="js/auth.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/investigacao.js"></script>
+  </body>
+</html>
