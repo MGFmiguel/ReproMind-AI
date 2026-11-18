@@ -1,55 +1,162 @@
-# ReproMind AI
+﻿# ReproMind AI
 
-Aplicação local para registrar ocorrências técnicas, conduzir uma coleta inicial de informações e organizar hipóteses e testes para validação.
+Aplicação web para apoiar equipes de tecnologia na investigação de bugs e ocorrências técnicas. O ReproMind AI organiza relatos, respostas, hipóteses, evidências e testes recomendados em um fluxo de investigação.
+
+> As hipóteses produzidas pela IA são sugestões. Uma causa só deve ser considerada confirmada depois de validada com testes e evidências.
+
+## Funcionalidades
+
+- Cadastro, edição e acompanhamento de ocorrências técnicas.
+- Priorização automática com base nos critérios da ocorrência.
+- Coleta adaptativa de informações para completar o relato.
+- Análise com OpenAI API ou modo simulado.
+- Geração de hipóteses, organização de evidências e recomendação de testes.
+- Priorização dos testes recomendados.
+- Busca de ocorrências semelhantes.
+- Histórico, timeline e comparação de análises.
+- Relatórios para consulta e impressão.
+- Login por nome de usuário e senha, com sessões armazenadas no SQLite.
+- Gerenciamento de usuários autorizado pelo administrador, sem cadastro público.
+- Limites de uso real da IA por usuário e globais, controle de concorrência e prevenção de análises duplicadas simultâneas.
+
+## Tecnologias
+
+- Node.js
+- Express
+- JavaScript
+- HTML e CSS
+- SQLite com better-sqlite3
+- OpenAI API
+- Nodemon para desenvolvimento
+
+## Estrutura do projeto
+
+~~~text
+.
+├── database/       # Banco SQLite e inicialização do esquema
+├── middleware/     # Autenticação, autorização e proteção CSRF
+├── public/         # Páginas, estilos e scripts do frontend
+├── routes/         # Rotas da aplicação e APIs
+├── scripts/        # Comandos locais de administração
+├── services/       # Autenticação, análise, regras e controle de uso da IA
+├── test/           # Testes automatizados
+├── server.js       # Inicialização do servidor Express
+├── package.json
+└── .env.example    # Modelo das variáveis de ambiente
+~~~
 
 ## Requisitos
 
-- Node.js compatível com as dependências do projeto
-- npm
+- Node.js e npm instalados.
+- Uma chave da OpenAI é opcional. Sem ela, o sistema utiliza o modo simulado.
 
-## Instalação e execução
+## Instalação
 
-```bash
+Clone o repositório pelo GitHub e abra a pasta do projeto no terminal. Depois instale as dependências:
+
+~~~bash
 npm install
+~~~
+
+Crie o arquivo local de configuração copiando o modelo:
+
+~~~bash
+# Linux ou macOS
+cp .env.example .env
+~~~
+
+~~~powershell
+# Windows PowerShell
+Copy-Item .env.example .env
+~~~
+
+Para usar a análise real, adicione sua chave da OpenAI em OPENAI_API_KEY no arquivo .env. Não publique esse arquivo nem coloque a chave no código-fonte. Sem uma chave, o sistema continua funcionando em modo simulado.
+
+Inicie o servidor em desenvolvimento:
+
+~~~bash
 npm run dev
-```
+~~~
 
-Abra `http://127.0.0.1:3000`. O banco SQLite é criado em `database/database.db` na primeira inicialização. Esse arquivo local não é versionado.
+A aplicação ficará disponível em http://127.0.0.1:3000. Para iniciar sem Nodemon, use:
 
-Para usar a análise real, configure `OPENAI_API_KEY` no arquivo `.env`. `OPENAI_MODEL` é opcional. Sem chave, o sistema usa a análise simulada. Falhas temporárias de rede, limite de uso e erros de servidor também usam o modo simulado; erros de configuração são exibidos.
+~~~bash
+npm start
+~~~
 
-## Acesso de usuários
+O banco SQLite é criado automaticamente no primeiro início, por padrão em database/database.db. O arquivo local do banco e o arquivo .env estão no .gitignore.
 
-Não há cadastro público. Em uma base sem usuários, a inicialização cria a conta inicial `admin` com senha temporária `admin`; a troca da senha é obrigatória no primeiro acesso. O administrador cadastra os membros autorizados pela página **Usuários**, usando uma senha temporária de pelo menos 6 caracteres, que o membro deverá trocar ao entrar. O administrador também pode desativar contas. Os usuários autenticados compartilham as ocorrências da equipe.
+## Primeiro acesso e usuários
 
-As senhas são armazenadas com hash scrypt e salt individual. As sessões ficam no SQLite e expiram após oito horas. A conta inicial com credenciais conhecidas é adequada apenas para a primeira configuração local; troque-a imediatamente e não exponha o sistema à rede enquanto a senha padrão estiver ativa.
+Não existe cadastro público. Em uma instalação com banco sem usuários, o sistema cria a conta inicial:
 
-As variáveis `PORT`, `HOST` e `DATABASE_PATH` podem configurar a porta, o endereço de escuta e o arquivo SQLite. O padrão do host é `127.0.0.1`. Para acessar de outros dispositivos, configure `HOST=0.0.0.0`, troque a senha inicial e coloque o servidor atrás de HTTPS.
+- Usuário: admin
+- Senha temporária: admin
+
+A troca da senha é obrigatória no primeiro acesso. Altere essa senha imediatamente. Depois, o administrador pode criar, desativar e redefinir as senhas temporárias dos membros pela área de usuários. As senhas temporárias precisam ter de 6 a 128 caracteres e devem ser trocadas no primeiro login.
+
+As senhas são armazenadas com scrypt e salt individual. As sessões ficam no SQLite e expiram após oito horas. Os usuários autenticados compartilham as ocorrências da equipe.
+
+## Configuração
+
+O arquivo .env.example contém os limites padrão para uso da IA. Estas variáveis podem ser ajustadas no .env:
+
+| Variável | Padrão | Descrição |
+| --- | --- | --- |
+| OPENAI_API_KEY | vazio | Chave da OpenAI; sem ela, o sistema usa simulação |
+| OPENAI_MODEL | gpt-5.5 | Modelo usado nas análises reais |
+| PORT | 3000 | Porta HTTP do servidor |
+| HOST | 127.0.0.1 | Endereço de escuta; por padrão, somente local |
+| DATABASE_PATH | database/database.db | Caminho do banco SQLite |
+| IA_LIMITE_USUARIO_HORA | 10 | Chamadas reais por usuário em uma hora |
+| IA_LIMITE_USUARIO_DIA | 30 | Chamadas reais por usuário em 24 horas |
+| IA_LIMITE_GLOBAL_DIA | 100 | Chamadas reais no total em 24 horas |
+| IA_MAX_CONCORRENCIA_USUARIO | 1 | Chamadas reais simultâneas por usuário |
+| IA_MAX_CONCORRENCIA_GLOBAL | 2 | Chamadas reais simultâneas no sistema |
+| IA_RESERVA_TTL_MINUTOS | 15 | Prazo da reserva, renovada durante chamadas demoradas |
+
+As janelas de cotas usam timestamps UTC. As reservas e usos reais ficam na tabela ia_usos_reais. Análises simuladas não consomem essas cotas. Ao atingir uma cota ou limite de concorrência, o sistema continua a investigação em modo simulado. Uma análise idêntica já em andamento retorna HTTP 409 para evitar uma chamada duplicada.
+
+Falhas depois do início da chamada são registradas de forma segura. Uma reserva só é cancelada quando a chamada ao provedor ainda não começou. Se a API respondeu, o uso é contabilizado mesmo quando uma resposta inválida exige gerar um relatório simulado. Erros de configuração, como uma chave inválida, continuam visíveis para facilitar a correção.
+
+## APIs principais
+
+| Prefixo | Uso |
+| --- | --- |
+| /api/auth | Login, sessão, logout e alteração de senha |
+| /api/ocorrencias | Cadastro, consulta, edição e acompanhamento de ocorrências |
+| /api/investigacao | Coleta de respostas e dados da investigação |
+| /api/ia | Análise e histórico de análises |
+| /api/usuarios | Administração de usuários |
+
+As APIs privadas exigem autenticação. Operações que alteram dados também usam proteção CSRF.
 
 ## Recuperação da conta administrativa
 
-Se a senha da conta administrativa for perdida, execute este procedimento localmente, a partir da pasta do projeto. Pare o servidor antes de iniciar a recuperação para evitar operações simultâneas no SQLite:
+Se a senha de uma conta administrativa for perdida, pare o servidor e execute localmente:
 
-```bash
+~~~bash
 npm run recuperar-admin
-```
+~~~
 
-O comando carrega o `.env` do projeto e usa o `DATABASE_PATH` configurado; sem essa variável, usa o banco padrão da aplicação. Ele lista apenas contas `admin` ativas, solicita o nome da conta e pede uma nova senha temporária duas vezes, sem exibi-la no terminal. A senha não deve ser informada como argumento.
+O comando usa o mesmo banco configurado para o servidor, lista somente contas administrativas ativas e solicita a nova senha temporária pelo terminal sem exibi-la. A confirmação é solicitada antes da alteração. A conta recuperada deverá trocar a senha no próximo login; somente as sessões dessa conta são revogadas.
 
-A senha temporária precisa ter de 6 a 128 caracteres. A recuperação atualiza somente a senha da conta administrativa selecionada, exige a troca no próximo login e revoga somente as sessões dessa conta. Usuários, papéis, contas desativadas e sessões dos demais usuários não são alterados. O comando não cria usuários, não reativa contas e não oferece recuperação por uma rota web.
-
-Depois da recuperação, inicie o servidor normalmente e entre com a senha temporária. O sistema solicitará a troca por uma senha permanente.
-
-## Controle de uso da IA
-
-Use o arquivo .env.example para configurar cotas e concorrência. Os padrões são 10 análises reais por usuário por hora, 30 por usuário em 24 horas, 100 globalmente em 24 horas, uma reserva simultânea por usuário, duas globalmente e reserva renovada durante chamadas demoradas.
-
-A rota de análise reserva uso somente quando a chave da OpenAI está configurada. O uso real registra usuário autenticado, ocorrência, fingerprint dos dados enviados, modelo, tokens disponíveis e status. O fingerprint inclui ocorrência, respostas, modelo e versão do contexto do prompt; alterações nesses dados permitem uma nova análise.
-
-Sem chave, ao atingir cota ou concorrência, a aplicação salva uma análise simulada sem registrar uso real. Uma análise idêntica já em andamento retorna HTTP 409 e não inicia outra chamada. Falhas após o início da chamada são registradas como falha; a reserva só é cancelada quando o provedor ainda não foi chamado. Respostas recebidas são contabilizadas mesmo se o conteúdo inválido resultar em relatório simulado.
+Não informe a senha como argumento do comando. A recuperação não cria usuários, não altera papéis, não reativa contas desativadas e não está disponível por uma rota web.
 
 ## Testes
 
-```bash
+Execute a suíte automatizada:
+
+~~~bash
 npm test
-```
+~~~
+
+Os testes de autenticação, recuperação e controle de uso usam bancos temporários. Os testes da integração com IA utilizam um cliente simulado e não precisam de uma chamada real à OpenAI.
+
+## Segurança
+
+- Troque a senha inicial do administrador antes de usar o sistema.
+- Mantenha .env fora do Git; nunca publique OPENAI_API_KEY.
+- O servidor escuta em 127.0.0.1 por padrão.
+- Para disponibilizar o sistema em uma rede, configure HTTPS e revise as configurações de acesso antes da implantação.
+
