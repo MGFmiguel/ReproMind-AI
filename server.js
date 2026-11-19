@@ -11,10 +11,33 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || "127.0.0.1";
 const arquivosPublicos = path.join(__dirname, "public");
-const inicializacaoBanco = Promise.resolve()
-  .then(() => (db.dialect === "postgres" ? db.ping() : undefined))
-  .then(() => inicializarAdmin())
-  .then(() => ({ erro: null }), (erro) => ({ erro }));
+let inicializacaoBanco = null;
+let erroInicializacaoBanco = null;
+let proximaTentativaInicializacaoBanco = 0;
+const INTERVALO_RETENTATIVA_INICIALIZACAO_MS = 1000;
+
+function garantirBancoInicializado() {
+  if (inicializacaoBanco) return inicializacaoBanco;
+  if (Date.now() < proximaTentativaInicializacaoBanco) {
+    return Promise.reject(erroInicializacaoBanco);
+  }
+
+  inicializacaoBanco = Promise.resolve()
+    .then(() => (db.dialect === "postgres" ? db.ping() : undefined))
+    .then(() => inicializarAdmin())
+    .then(() => {
+      erroInicializacaoBanco = null;
+      proximaTentativaInicializacaoBanco = 0;
+    })
+    .catch((erro) => {
+      inicializacaoBanco = null;
+      erroInicializacaoBanco = erro;
+      proximaTentativaInicializacaoBanco = Date.now() + INTERVALO_RETENTATIVA_INICIALIZACAO_MS;
+      throw erro;
+    });
+
+  return inicializacaoBanco;
+}
 
 app.disable("x-powered-by");
 if (process.env.NODE_ENV === "production") {
@@ -23,7 +46,7 @@ if (process.env.NODE_ENV === "production") {
 }
 app.use(express.json({ limit: "50kb" }));
 app.use((req, res, next) => {
-  inicializacaoBanco.then(({ erro }) => erro ? next(erro) : next());
+  garantirBancoInicializado().then(() => next(), next);
 });
 app.use(carregarSessao);
 app.use((req, res, next) => {
@@ -86,16 +109,14 @@ app.use((erro, req, res, next) => {
 });
 
 if (require.main === module) {
-  inicializacaoBanco.then(({ erro }) => {
-    if (erro) {
-      const codigo = typeof erro.code === "string" ? erro.code : "erro_interno";
-      console.error("Falha ao inicializar o banco e a conta administrativa:", codigo);
-      process.exitCode = 1;
-      return;
-    }
+  garantirBancoInicializado().then(() => {
     app.listen(PORT, HOST, () => {
       console.log(`Servidor iniciado: http://${HOST}:${PORT}`);
     });
+  }, (erro) => {
+    const codigo = typeof erro.code === "string" ? erro.code : "erro_interno";
+    console.error("Falha ao inicializar o banco e a conta administrativa:", codigo);
+    process.exitCode = 1;
   });
 }
 

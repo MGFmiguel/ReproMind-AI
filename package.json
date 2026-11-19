@@ -8,7 +8,8 @@
     "dev": "nodemon server.js",
     "start": "node server.js",
     "recuperar-admin": "node scripts/recuperar-admin.js",
-    "migrar-sqlite-postgres": "node scripts/migrar-sqlite-postgres.js"
+    "migrar-sqlite-postgres": "node scripts/migrar-sqlite-postgres.js",
+    "postinstall": "prisma skills sync || exit 0"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.14",
+    "prisma": "^8.0.0-rc.34",
     "supabase": "^3.2.0"
   }
 }
