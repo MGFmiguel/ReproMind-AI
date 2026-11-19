@@ -77,6 +77,13 @@ app.get("/login.html", (req, res) => {
   res.sendFile(path.join(paginasHtml, "login.html"));
 });
 
+app.get("/registro.html", (req, res) => {
+  if (req.usuario) {
+    return res.redirect(req.usuario.deveTrocarSenha ? "/alterar-senha.html" : "/");
+  }
+  res.sendFile(path.join(paginasHtml, "registro.html"));
+});
+
 app.get("/alterar-senha.html", (req, res) => {
   if (!req.usuario) return res.redirect("/login.html");
   res.sendFile(path.join(paginasHtml, "alterar-senha.html"));

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Criar conta | ReproMind AI</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body class="auth-page">
+    <main class="auth-card">
+      <div class="logo">Repro<span>Mind</span> AI</div>
+      <h1>Criar conta</h1>
+      <p>Cadastre-se para acessar o ReproMind AI como membro.</p>
+      <form id="formCadastro">
+        <label for="nomeUsuario">Nome de usuário</label>
+        <input
+          id="nomeUsuario"
+          name="nomeUsuario"
+          autocomplete="username"
+          autocapitalize="none"
+          required
+          minlength="3"
+          maxlength="32"
+          pattern="[a-zA-Z0-9_.-]{3,32}"
+          title="Use de 3 a 32 letras, números, ponto, hífen ou sublinhado."
+        />
+        <label for="senha">Senha</label>
+        <input
+          id="senha"
+          name="senha"
+          type="password"
+          autocomplete="new-password"
+          required
+          minlength="6"
+          maxlength="128"
+        />
+        <label for="confirmacao">Confirme a senha</label>
+        <input
+          id="confirmacao"
+          name="confirmacao"
+          type="password"
+          autocomplete="new-password"
+          required
+          minlength="6"
+          maxlength="128"
+        />
+        <button type="submit">Criar conta</button>
+        <p id="mensagemCadastro" role="status" aria-live="polite"></p>
+      </form>
+      <p class="form-help"><a href="/login.html">Já tem uma conta? Entrar</a></p>
+    </main>
+    <script src="js/registro.js"></script>
+    <script>
+      window.si =
+        window.si ||
+        function () {
+          (window.siq = window.siq || []).push(arguments);
+        };
+    </script>
+    <script defer src="/_vercel/speed-insights/script.js"></script>
+  </body>
+</html>

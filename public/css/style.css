@@ -655,6 +655,10 @@ footer {
   color: #94a3b8;
 }
 
+.auth-card a {
+  color: #7dd3fc;
+}
+
 .auth-card form {
   display: grid;
   gap: 12px;

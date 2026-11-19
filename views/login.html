@@ -10,19 +10,37 @@
     <main class="auth-card">
       <div class="logo">Repro<span>Mind</span> AI</div>
       <h1>Acesse sua conta</h1>
-      <p>Entre com o nome de usuário criado pelo administrador.</p>
+      <p>Entre com seu nome de usuário e senha.</p>
       <form id="formLogin">
         <label for="nomeUsuario">Nome de usuário</label>
-        <input id="nomeUsuario" name="nomeUsuario" autocomplete="username" required maxlength="32" />
+        <input
+          id="nomeUsuario"
+          name="nomeUsuario"
+          autocomplete="username"
+          required
+          maxlength="32"
+        />
         <label for="senha">Senha</label>
-        <input id="senha" name="senha" type="password" autocomplete="current-password" required maxlength="128" />
+        <input
+          id="senha"
+          name="senha"
+          type="password"
+          autocomplete="current-password"
+          required
+          maxlength="128"
+        />
         <button type="submit">Entrar</button>
         <p id="mensagemLogin" role="status" aria-live="polite"></p>
       </form>
+      <p class="form-help"><a href="/registro.html">Ainda não tem conta? Cadastre-se</a></p>
     </main>
     <script src="js/login.js"></script>
     <script>
-      window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
+      window.si =
+        window.si ||
+        function () {
+          (window.siq = window.siq || []).push(arguments);
+        };
     </script>
     <script defer src="/_vercel/speed-insights/script.js"></script>
   </body>
