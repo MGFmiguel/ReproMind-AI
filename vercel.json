@@ -3,7 +3,7 @@
   "functions": {
     "server.js": {
       "includeFiles": "{views,certs}/**",
-      "maxDuration": "max"
+      "maxDuration": 60
     }
   }
 }
