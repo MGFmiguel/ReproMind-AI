@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../database/database");
+const db = require("../database/connection");
 const {
   criarHashSenha,
   revogarSessoesUsuario,
@@ -11,10 +11,10 @@ const { exigirAdmin, exigirAutenticacao, exigirCsrf, exigirSenhaAtualizada } = r
 
 router.use(exigirAutenticacao, exigirSenhaAtualizada, exigirAdmin);
 
-router.get("/", (req, res) => {
-  const usuarios = db.prepare(`
+router.get("/", async (req, res) => {
+  const usuarios = await db.prepare(`
     SELECT id, nome_usuario, papel, ativo, deve_trocar_senha, data_criacao
-    FROM usuarios ORDER BY nome_usuario COLLATE NOCASE
+    FROM usuarios ORDER BY LOWER(nome_usuario)
   `).all();
   res.json({ usuarios });
 });
@@ -34,7 +34,7 @@ router.post("/", exigirCsrf, async (req, res) => {
 
   try {
     const credencial = await criarHashSenha(senhaTemporaria);
-    const resultado = db.prepare(`
+    const resultado = await db.prepare(`
       INSERT INTO usuarios (nome_usuario, senha_hash, senha_salt, papel, deve_trocar_senha)
       VALUES (?, ?, ?, 'membro', 1)
     `).run(nomeUsuario, credencial.hash, credencial.salt);
@@ -43,7 +43,7 @@ router.post("/", exigirCsrf, async (req, res) => {
       usuario: { id: resultado.lastInsertRowid, nomeUsuario, papel: "membro", ativo: true },
     });
   } catch (erro) {
-    if (erro.code === "SQLITE_CONSTRAINT_UNIQUE") {
+    if (["SQLITE_CONSTRAINT_UNIQUE", "23505"].includes(erro.code)) {
       return res.status(409).json({ erro: "Esse nome de usuário já está cadastrado." });
     }
     console.error("Falha ao criar usuário:", erro);
@@ -51,25 +51,25 @@ router.post("/", exigirCsrf, async (req, res) => {
   }
 });
 
-router.patch("/:id/ativo", exigirCsrf, (req, res) => {
+router.patch("/:id/ativo", exigirCsrf, async (req, res) => {
   const id = Number(req.params.id);
   const ativo = req.body?.ativo;
   if (!Number.isInteger(id) || id <= 0 || typeof ativo !== "boolean") {
     return res.status(400).json({ erro: "ID ou estado de usuário inválido." });
   }
 
-  const usuario = db.prepare("SELECT id, papel FROM usuarios WHERE id = ?").get(id);
+  const usuario = await db.prepare("SELECT id, papel FROM usuarios WHERE id = ?").get(id);
   if (!usuario) return res.status(404).json({ erro: "Usuário não encontrado." });
   if (!ativo && id === req.usuario.id) {
     return res.status(400).json({ erro: "O administrador não pode desativar a própria conta." });
   }
   if (!ativo && usuario.papel === "admin") {
-    const adminsAtivos = db.prepare("SELECT COUNT(*) AS total FROM usuarios WHERE papel = 'admin' AND ativo = 1").get().total;
+    const adminsAtivos = (await db.prepare("SELECT COUNT(*) AS total FROM usuarios WHERE papel = 'admin' AND ativo = 1").get()).total;
     if (adminsAtivos <= 1) return res.status(400).json({ erro: "Não é possível desativar o último administrador ativo." });
   }
 
-  db.prepare("UPDATE usuarios SET ativo = ? WHERE id = ?").run(ativo ? 1 : 0, id);
-  if (!ativo) revogarSessoesUsuario(id);
+  await db.prepare("UPDATE usuarios SET ativo = ? WHERE id = ?").run(ativo ? 1 : 0, id);
+  if (!ativo) await revogarSessoesUsuario(id);
   res.json({ mensagem: ativo ? "Usuário ativado." : "Usuário desativado." });
 });
 
@@ -81,17 +81,17 @@ router.post("/:id/redefinir-senha", exigirCsrf, async (req, res) => {
     return res.status(400).json({ erro: "A senha temporária deve ter de 6 a 128 caracteres." });
   }
 
-  const usuario = db.prepare("SELECT id FROM usuarios WHERE id = ?").get(id);
+  const usuario = await db.prepare("SELECT id FROM usuarios WHERE id = ?").get(id);
   if (!usuario) return res.status(404).json({ erro: "Usuário não encontrado." });
 
   try {
     const credencial = await criarHashSenha(senhaTemporaria);
-    db.prepare(`
+    await db.prepare(`
       UPDATE usuarios
       SET senha_hash = ?, senha_salt = ?, deve_trocar_senha = 1
       WHERE id = ?
     `).run(credencial.hash, credencial.salt, id);
-    revogarSessoesUsuario(id);
+    await revogarSessoesUsuario(id);
     res.json({ mensagem: "Senha redefinida. O usuário deverá trocá-la no próximo acesso." });
   } catch (erro) {
     console.error("Falha ao redefinir senha:", erro);

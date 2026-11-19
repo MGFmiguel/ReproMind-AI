@@ -72,6 +72,15 @@ db.exec(`
     );
 
     CREATE INDEX IF NOT EXISTS idx_sessoes_expira_em ON sessoes(expira_em);
+
+    CREATE TABLE IF NOT EXISTS tentativas_login (
+        escopo TEXT NOT NULL CHECK (escopo IN ('credencial', 'ip')),
+        chave_hash TEXT NOT NULL CHECK (length(chave_hash) = 64),
+        inicio INTEGER NOT NULL,
+        quantidade INTEGER NOT NULL CHECK (quantidade >= 0),
+        PRIMARY KEY (escopo, chave_hash)
+    );
+    CREATE INDEX IF NOT EXISTS idx_tentativas_login_inicio ON tentativas_login(inicio);
 `);
 
 // Estrutura aditiva para reservas e utilizacao real da OpenAI.

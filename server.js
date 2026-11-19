@@ -3,16 +3,28 @@ require("dotenv").config();
 const express = require("express");
 const path = require("path");
 
-require("./database/database");
+const db = require("./database/connection");
 const { carregarSessao, exigirAutenticacao, exigirCsrf, exigirPagina, exigirSenhaAtualizada } = require("./middleware/autenticacao");
 const { inicializarAdmin } = require("./services/autenticacao");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || "127.0.0.1";
+const arquivosPublicos = path.join(__dirname, "public");
+const inicializacaoBanco = Promise.resolve()
+  .then(() => (db.dialect === "postgres" ? db.ping() : undefined))
+  .then(() => inicializarAdmin())
+  .then(() => ({ erro: null }), (erro) => ({ erro }));
 
 app.disable("x-powered-by");
+if (process.env.NODE_ENV === "production") {
+  // A Vercel edge replaces X-Forwarded-For with the requester's public IP.
+  app.set("trust proxy", true);
+}
 app.use(express.json({ limit: "50kb" }));
+app.use((req, res, next) => {
+  inicializacaoBanco.then(({ erro }) => erro ? next(erro) : next());
+});
 app.use(carregarSessao);
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -34,27 +46,27 @@ app.use("/api/investigacao", exigirAutenticacao, exigirSenhaAtualizada, exigirCs
 app.use("/api/ia", exigirAutenticacao, exigirSenhaAtualizada, exigirCsrf, iaRoutes);
 app.use("/api/usuarios", usuariosRoutes);
 
-const arquivosPublicos = path.join(__dirname, "public");
+const paginasHtml = path.join(__dirname, "views");
 app.get("/login.html", (req, res) => {
   if (req.usuario) {
     return res.redirect(req.usuario.deveTrocarSenha ? "/alterar-senha.html" : "/");
   }
-  res.sendFile(path.join(arquivosPublicos, "login.html"));
+  res.sendFile(path.join(paginasHtml, "login.html"));
 });
 
 app.get("/alterar-senha.html", (req, res) => {
   if (!req.usuario) return res.redirect("/login.html");
-  res.sendFile(path.join(arquivosPublicos, "alterar-senha.html"));
+  res.sendFile(path.join(paginasHtml, "alterar-senha.html"));
 });
 
 app.get("/usuarios.html", exigirPagina, (req, res) => {
   if (req.usuario.papel !== "admin") return res.redirect("/");
-  res.sendFile(path.join(arquivosPublicos, "usuarios.html"));
+  res.sendFile(path.join(paginasHtml, "usuarios.html"));
 });
 
 for (const pagina of ["/", "/index.html", "/investigacao.html", "/historico.html", "/relatorio.html"]) {
   app.get(pagina, exigirPagina, (req, res) => {
-    res.sendFile(path.join(arquivosPublicos, pagina === "/" ? "index.html" : pagina.slice(1)));
+    res.sendFile(path.join(paginasHtml, pagina === "/" ? "index.html" : pagina.slice(1)));
   });
 }
 
@@ -73,13 +85,18 @@ app.use((erro, req, res, next) => {
   return res.status(500).json({ erro: "Não foi possível processar a requisição." });
 });
 
-inicializarAdmin()
-  .then(() => {
+if (require.main === module) {
+  inicializacaoBanco.then(({ erro }) => {
+    if (erro) {
+      const codigo = typeof erro.code === "string" ? erro.code : "erro_interno";
+      console.error("Falha ao inicializar o banco e a conta administrativa:", codigo);
+      process.exitCode = 1;
+      return;
+    }
     app.listen(PORT, HOST, () => {
       console.log(`Servidor iniciado: http://${HOST}:${PORT}`);
     });
-  })
-  .catch((erro) => {
-    console.error("Falha ao inicializar a conta de administrador:", erro);
-    process.exitCode = 1;
   });
+}
+
+module.exports = app;

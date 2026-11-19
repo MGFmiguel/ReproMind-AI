@@ -8,7 +8,7 @@ let dependencias;
 
 function obterDependencias() {
   if (!dependencias) {
-    const db = require("../database/database");
+    const db = require("../database/connection");
     const autenticacao = require("../services/autenticacao");
     dependencias = { db, autenticacao };
   }
@@ -20,7 +20,7 @@ function listarAdminsAtivos(db) {
     SELECT id, nome_usuario
     FROM usuarios
     WHERE papel = 'admin' AND ativo = 1
-    ORDER BY nome_usuario COLLATE NOCASE
+    ORDER BY LOWER(nome_usuario)
   `).all();
 }
 
@@ -33,10 +33,10 @@ async function recuperarAdmin({ db, autenticacao }, nomeUsuario, senhaTemporaria
   }
 
   const nomeNormalizado = autenticacao.normalizarNomeUsuario(nomeUsuario);
-  const usuario = db.prepare(`
+  const usuario = await db.prepare(`
     SELECT id, nome_usuario, papel, ativo
     FROM usuarios
-    WHERE nome_usuario = ? COLLATE NOCASE
+    WHERE LOWER(nome_usuario) = ?
   `).get(nomeNormalizado);
 
   if (!usuario) throw new Error("Conta não encontrada.");
@@ -48,6 +48,21 @@ async function recuperarAdmin({ db, autenticacao }, nomeUsuario, senhaTemporaria
   }
 
   const credencial = await autenticacao.criarHashSenha(senhaTemporaria);
+  if (db.dialect === "postgres") {
+    await db.transaction(async (tx) => {
+      const resultado = await tx.prepare(`
+        UPDATE usuarios
+        SET senha_hash = ?, senha_salt = ?, deve_trocar_senha = 1
+        WHERE id = ? AND papel = 'admin' AND ativo = 1
+      `).run(credencial.hash, credencial.salt, usuario.id);
+      if (resultado.changes !== 1) {
+        throw new Error("A conta admin mudou durante a recuperacao. Nenhuma alteracao foi feita.");
+      }
+      await autenticacao.revogarSessoesUsuario(usuario.id, tx);
+    })();
+    return usuario.nome_usuario;
+  }
+
   const redefinir = db.transaction(() => {
     const resultado = db.prepare(`
       UPDATE usuarios
@@ -117,7 +132,7 @@ async function executar() {
 
   const { db, autenticacao } = obterDependencias();
   try {
-    const admins = listarAdminsAtivos(db);
+    const admins = await listarAdminsAtivos(db);
     if (!admins.length) {
       throw new Error("Não há contas admin ativas disponíveis para recuperação.");
     }
@@ -144,7 +159,7 @@ async function executar() {
 
     console.log(`Senha temporária definida para ${usuarioRecuperado}. No próximo login, será necessário trocá-la.`);
   } finally {
-    if (db.open) db.close();
+    if (db.open || db.dialect === "postgres") await db.close();
   }
 }
 

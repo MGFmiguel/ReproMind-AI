@@ -6,6 +6,8 @@ const path = require("node:path");
 
 const diretorioTemporario = mkdtempSync(path.join(os.tmpdir(), "repromind-auth-unit-"));
 process.env.DATABASE_PATH = path.join(diretorioTemporario, "teste.db");
+process.env.DATABASE_DRIVER = "sqlite";
+process.env.NODE_ENV = "test";
 
 const db = require("../database/database");
 const {

@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../database/database");
+const db = require("../database/connection");
 const { ehArray, ehObjeto, lerJson } = require("../services/jsonSeguro");
 const { textoValido } = require("../services/regrasOcorrencias");
 
@@ -50,12 +50,12 @@ const perguntas = {
 };
 
 // Verificar ocorrência
-function buscarOcorrencia(id) {
+async function buscarOcorrencia(id) {
   return db.prepare("SELECT * FROM ocorrencias WHERE id = ?").get(id);
 }
 
 // Selecionar próxima pergunta
-router.get("/:id/proxima-pergunta", (req, res) => {
+router.get("/:id/proxima-pergunta", async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
@@ -64,7 +64,7 @@ router.get("/:id/proxima-pergunta", (req, res) => {
     });
   }
 
-  const ocorrencia = buscarOcorrencia(id);
+  const ocorrencia = await buscarOcorrencia(id);
 
   if (!ocorrencia) {
     return res.status(404).json({
@@ -72,7 +72,7 @@ router.get("/:id/proxima-pergunta", (req, res) => {
     });
   }
 
-  const respostas = db
+  const respostas = await db
     .prepare(
       `
           SELECT pergunta, resposta
@@ -141,16 +141,16 @@ router.get("/:id/proxima-pergunta", (req, res) => {
 });
 
 // Registrar resposta
-router.get("/:id/respostas", (req, res) => {
+router.get("/:id/respostas", async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ erro: "ID inválido." });
   }
-  if (!buscarOcorrencia(id)) {
+  if (!await buscarOcorrencia(id)) {
     return res.status(404).json({ erro: "Ocorrência não encontrada." });
   }
 
-  const respostas = db.prepare(`
+  const respostas = await db.prepare(`
     SELECT pergunta, resposta, ordem
     FROM respostas_investigacao
     WHERE ocorrencia_id = ?
@@ -165,7 +165,7 @@ router.get("/:id/respostas", (req, res) => {
   });
 });
 
-router.post("/:id/respostas", (req, res) => {
+router.post("/:id/respostas", async (req, res) => {
   const id = Number(req.params.id);
   const pergunta = req.body?.pergunta;
   const resposta = req.body?.resposta;
@@ -176,7 +176,7 @@ router.post("/:id/respostas", (req, res) => {
     });
   }
 
-  if (!buscarOcorrencia(id)) {
+  if (!await buscarOcorrencia(id)) {
     return res.status(404).json({
       erro: "Ocorrência não encontrada.",
     });
@@ -192,7 +192,7 @@ router.post("/:id/respostas", (req, res) => {
     });
   }
 
-  const existente = db
+  const existente = await db
     .prepare(
       `
           SELECT id FROM respostas_investigacao
@@ -202,7 +202,7 @@ router.post("/:id/respostas", (req, res) => {
     .get(id, pergunta);
 
   if (existente) {
-    db.prepare(
+    await db.prepare(
       `
               UPDATE respostas_investigacao
               SET resposta = ?
@@ -210,7 +210,7 @@ router.post("/:id/respostas", (req, res) => {
           `,
     ).run(resposta.trim(), existente.id);
   } else {
-    const quantidade = db
+    const quantidade = (await db
       .prepare(
         `
               SELECT COUNT(*) AS total
@@ -218,9 +218,9 @@ router.post("/:id/respostas", (req, res) => {
               WHERE ocorrencia_id = ?
           `,
       )
-      .get(id).total;
+      .get(id)).total;
 
-    db.prepare(
+    await db.prepare(
       `
               INSERT INTO respostas_investigacao
               (ocorrencia_id, pergunta, resposta, ordem)
@@ -229,7 +229,7 @@ router.post("/:id/respostas", (req, res) => {
     ).run(id, pergunta, resposta.trim(), quantidade + 1);
   }
 
-  db.prepare("UPDATE ocorrencias SET status = ? WHERE id = ? AND status = ?")
+  await db.prepare("UPDATE ocorrencias SET status = ? WHERE id = ? AND status = ?")
     .run("Em investigação", id, "Aberta");
 
   res.json({
@@ -238,7 +238,7 @@ router.post("/:id/respostas", (req, res) => {
 });
 
 // Gerar relatório da investigação
-router.post("/:id/relatorio", (req, res) => {
+router.post("/:id/relatorio", async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
@@ -247,7 +247,7 @@ router.post("/:id/relatorio", (req, res) => {
     });
   }
 
-  const ocorrencia = buscarOcorrencia(id);
+  const ocorrencia = await buscarOcorrencia(id);
 
   if (!ocorrencia) {
     return res.status(404).json({
@@ -255,7 +255,7 @@ router.post("/:id/relatorio", (req, res) => {
     });
   }
 
-  const respostas = db
+  const respostas = await db
     .prepare(
       `
           SELECT pergunta, resposta
@@ -362,7 +362,7 @@ router.post("/:id/relatorio", (req, res) => {
   const resumo = `A ocorrência "${ocorrencia.titulo}" foi registrada com prioridade ${ocorrencia.prioridade}. Categoria: ${ocorrencia.categoria || "Não definida"}. Foram coletadas ${respostas.length} respostas durante a investigação inicial.`;
 
   // Salvar relatório no banco
-  const resultado = db
+  const resultado = await db
     .prepare(
       `
           INSERT INTO relatorios
@@ -391,7 +391,7 @@ router.post("/:id/relatorio", (req, res) => {
 });
 
 // Consultar relatório
-router.get("/:id/relatorio", (req, res) => {
+router.get("/:id/relatorio", async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
@@ -400,7 +400,7 @@ router.get("/:id/relatorio", (req, res) => {
     });
   }
 
-  const relatorio = db
+  const relatorio = await db
     .prepare(
       `
           SELECT *

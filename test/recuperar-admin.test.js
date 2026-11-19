@@ -8,6 +8,8 @@ const path = require("node:path");
 const diretorioTemporario = mkdtempSync(path.join(os.tmpdir(), "repromind-recuperar-admin-"));
 const caminhoBancoTemporario = path.join(diretorioTemporario, "teste.db");
 process.env.DATABASE_PATH = caminhoBancoTemporario;
+process.env.DATABASE_DRIVER = "sqlite";
+process.env.NODE_ENV = "test";
 
 const {
   listarAdminsAtivos,

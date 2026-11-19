@@ -8,6 +8,8 @@ const express = require("express");
 
 const diretorioTemporario = mkdtempSync(path.join(os.tmpdir(), "repromind-ia-integracao-"));
 process.env.DATABASE_PATH = path.join(diretorioTemporario, "integracao.db");
+process.env.DATABASE_DRIVER = "sqlite";
+process.env.NODE_ENV = "test";
 
 const db = require("../database/database");
 const rotasIA = require("../routes/ia");

@@ -1,6 +1,6 @@
 ﻿const express = require("express");
 
-const bancoPadrao = require("../database/database");
+const bancoPadrao = require("../database/connection");
 const inteligenciaArtificial = require("../services/inteligenciaArtificial");
 const controleUsoPadrao = require("../services/controleUsoIA");
 const { calcularFingerprintEntrada } = require("../services/controleUsoIA");
@@ -41,7 +41,7 @@ function criarRouterIA(dependencias = {}) {
         return res.status(401).json({ erro: "Autenticação necessária." });
       }
 
-      const ocorrencia = db
+      const ocorrencia = await db
         .prepare("SELECT * FROM ocorrencias WHERE id = ?")
         .get(id);
 
@@ -49,7 +49,7 @@ function criarRouterIA(dependencias = {}) {
         return res.status(404).json({ erro: "Ocorrência não encontrada." });
       }
 
-      const respostas = db
+      const respostas = await db
         .prepare(
           "SELECT pergunta, resposta FROM respostas_investigacao WHERE ocorrencia_id = ? ORDER BY ordem ASC",
         )
@@ -75,7 +75,7 @@ function criarRouterIA(dependencias = {}) {
           modelo,
           contexto,
         });
-        const reserva = controleUsoIA.reservarUsoReal({
+        const reserva = await controleUsoIA.reservarUsoReal({
           usuarioId: req.usuario.id,
           ocorrenciaId: id,
           fingerprintEntrada,
@@ -115,14 +115,16 @@ function criarRouterIA(dependencias = {}) {
           const intervaloMs = Math.max(100, Math.floor(ttlReservaMs / 3));
 
           intervaloRenovacao = iniciarIntervalo(() => {
-            try {
-              const renovacao = controleUsoIA.renovarReservaUsoReal(usoId);
+            Promise.resolve()
+              .then(() => controleUsoIA.renovarReservaUsoReal(usoId))
+              .then((renovacao) => {
               if (!renovacao.renovada) {
                 console.error("A reserva de uso da IA não pôde ser renovada.");
               }
-            } catch (erroRenovacao) {
+              })
+              .catch((erroRenovacao) => {
               console.error("Falha ao renovar reserva de uso da IA:", codigoErroSeguro(erroRenovacao) || "erro_interno");
-            }
+              });
           }, intervaloMs);
           intervaloRenovacao.unref?.();
 
@@ -141,16 +143,16 @@ function criarRouterIA(dependencias = {}) {
           const metadadosIA = resultado?.metadadosIA || {};
           if (chamadaRealIniciada) {
             if (metadadosIA.respostaRecebida === true) {
-              controleUsoIA.concluirUsoReal(usoId, {
+              await controleUsoIA.concluirUsoReal(usoId, {
                 modelo: typeof metadadosIA.modelo === "string" ? metadadosIA.modelo : modelo,
                 tokensEntrada: metadadosIA.tokensEntrada ?? null,
                 tokensSaida: metadadosIA.tokensSaida ?? null,
               });
             } else {
-              controleUsoIA.registrarFalhaUsoReal(usoId, "resposta_nao_recebida");
+              await controleUsoIA.registrarFalhaUsoReal(usoId, "resposta_nao_recebida");
             }
           } else {
-            controleUsoIA.cancelarReservaUsoReal(usoId);
+            await controleUsoIA.cancelarReservaUsoReal(usoId);
           }
           usoEncerrado = true;
         }
@@ -158,7 +160,7 @@ function criarRouterIA(dependencias = {}) {
 
       const relatorioIA = resultado.relatorio;
 
-      db.prepare(
+      await db.prepare(
         [
           "INSERT INTO relatorios (",
           "ocorrencia_id, resumo, hipotese, evidencias, testes_sugeridos, modo,",
@@ -190,9 +192,9 @@ function criarRouterIA(dependencias = {}) {
       if (usoId && !usoEncerrado) {
         try {
           if (chamadaRealIniciada) {
-            controleUsoIA.registrarFalhaUsoReal(usoId, codigoErroSeguro(erro));
+            await controleUsoIA.registrarFalhaUsoReal(usoId, codigoErroSeguro(erro));
           } else {
-            controleUsoIA.cancelarReservaUsoReal(usoId);
+            await controleUsoIA.cancelarReservaUsoReal(usoId);
           }
         } catch {
           // A reserva pode já ter sido finalizada; não registrar detalhes da falha.
@@ -206,7 +208,7 @@ function criarRouterIA(dependencias = {}) {
     }
   });
 
-  router.get("/historico/:id", (req, res) => {
+  router.get("/historico/:id", async (req, res) => {
     try {
       const id = Number(req.params.id);
 
@@ -216,7 +218,7 @@ function criarRouterIA(dependencias = {}) {
         });
       }
 
-      const ocorrencia = db
+      const ocorrencia = await db
         .prepare("SELECT id FROM ocorrencias WHERE id = ?")
         .get(id);
 
@@ -226,7 +228,7 @@ function criarRouterIA(dependencias = {}) {
         });
       }
 
-      const analises = db
+      const analises = await db
         .prepare(
           [
             "SELECT * FROM relatorios",

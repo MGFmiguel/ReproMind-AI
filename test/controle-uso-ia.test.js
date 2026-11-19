@@ -9,6 +9,8 @@ const Database = require("better-sqlite3");
 const diretorioTemporario = mkdtempSync(path.join(os.tmpdir(), "repromind-controle-ia-"));
 const caminhoBancoTemporario = path.join(diretorioTemporario, "legado.db");
 process.env.DATABASE_PATH = caminhoBancoTemporario;
+process.env.DATABASE_DRIVER = "sqlite";
+process.env.NODE_ENV = "test";
 
 const bancoLegado = new Database(caminhoBancoTemporario);
 bancoLegado.pragma("foreign_keys = ON");

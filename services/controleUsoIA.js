@@ -1,5 +1,5 @@
 const crypto = require("node:crypto");
-const bancoPadrao = require("../database/database");
+const bancoPadrao = require("../database/connection");
 
 const JANELA_HORA_MS = 60 * 60 * 1000;
 const JANELA_DIA_MS = 24 * 60 * 60 * 1000;
@@ -64,6 +64,180 @@ function validarTokens(valor, nome) {
   return valor;
 }
 
+function criarControleUsoIAPostgres({ db, configuracao, relogio }) {
+  function obterAgora() {
+    const agora = relogio();
+    if (!Number.isSafeInteger(agora) || agora < 0) {
+      throw new TypeError("O relogio deve retornar milissegundos desde epoch.");
+    }
+    return agora;
+  }
+
+  async function reservarUsoReal({ usuarioId, ocorrenciaId, fingerprintEntrada, modelo = null }) {
+    validarId(usuarioId, "usuarioId");
+    validarId(ocorrenciaId, "ocorrenciaId");
+    const fingerprint = validarFingerprint(fingerprintEntrada);
+    if (modelo !== null && (typeof modelo !== "string" || modelo.length > 100)) {
+      throw new TypeError("O modelo deve ter no maximo 100 caracteres.");
+    }
+
+    return db.transaction(async (tx) => {
+      // Serializa reservas em diferentes instancias serverless para que cotas e
+      // limites globais de concorrencia sejam verificados atomicamente.
+      await tx.prepare("SELECT pg_advisory_xact_lock(?)").get(0x52504d494e44);
+      const agora = obterAgora();
+      const reservadaAte = agora + configuracao.ttlReservaMs;
+      if (!Number.isSafeInteger(reservadaAte)) {
+        throw new RangeError("O prazo da reserva excede o intervalo suportado.");
+      }
+
+      await tx.prepare(`
+        UPDATE ia_usos_reais
+        SET status = 'expirada', finalizada_em = ?, reservada_ate = NULL
+        WHERE status = 'reservada'
+          AND (reservada_ate <= ? OR (reservada_ate IS NULL AND solicitada_em <= ?))
+      `).run(agora, agora, agora - configuracao.ttlReservaMs);
+
+      const usuario = await tx.prepare(`
+        SELECT id FROM usuarios WHERE id = ? AND ativo = 1
+      `).get(usuarioId);
+      if (!usuario) return { permitida: false, motivo: "usuario_inativo_ou_inexistente" };
+
+      const ocorrencia = await tx.prepare("SELECT id FROM ocorrencias WHERE id = ?").get(ocorrenciaId);
+      if (!ocorrencia) return { permitida: false, motivo: "ocorrencia_inexistente" };
+
+      const reservaDuplicada = await tx.prepare(`
+        SELECT id FROM ia_usos_reais
+        WHERE ocorrencia_id = ? AND fingerprint_entrada = ?
+          AND status = 'reservada'
+      `).get(ocorrenciaId, fingerprint);
+      if (reservaDuplicada) {
+        return { permitida: false, motivo: "duplicada", usoId: reservaDuplicada.id };
+      }
+
+      const usosUsuarioHora = (await tx.prepare(`
+        SELECT COUNT(*) AS total FROM ia_usos_reais
+        WHERE usuario_id = ? AND solicitada_em >= ?
+          AND status IN (${STATUS_QUE_CONTA_COTA})
+      `).get(usuarioId, agora - JANELA_HORA_MS)).total;
+      if (usosUsuarioHora >= configuracao.limiteUsuarioHora) {
+        return { permitida: false, motivo: "limite_usuario_hora", usado: usosUsuarioHora, limite: configuracao.limiteUsuarioHora };
+      }
+
+      const usosUsuarioDia = (await tx.prepare(`
+        SELECT COUNT(*) AS total FROM ia_usos_reais
+        WHERE usuario_id = ? AND solicitada_em >= ?
+          AND status IN (${STATUS_QUE_CONTA_COTA})
+      `).get(usuarioId, agora - JANELA_DIA_MS)).total;
+      if (usosUsuarioDia >= configuracao.limiteUsuarioDia) {
+        return { permitida: false, motivo: "limite_usuario_dia", usado: usosUsuarioDia, limite: configuracao.limiteUsuarioDia };
+      }
+
+      const usosGlobaisDia = (await tx.prepare(`
+        SELECT COUNT(*) AS total FROM ia_usos_reais
+        WHERE solicitada_em >= ? AND status IN (${STATUS_QUE_CONTA_COTA})
+      `).get(agora - JANELA_DIA_MS)).total;
+      if (usosGlobaisDia >= configuracao.limiteGlobalDia) {
+        return { permitida: false, motivo: "limite_global_dia", usado: usosGlobaisDia, limite: configuracao.limiteGlobalDia };
+      }
+
+      const usosUsuarioAtivos = (await tx.prepare(`
+        SELECT COUNT(*) AS total FROM ia_usos_reais
+        WHERE usuario_id = ? AND status = 'reservada'
+      `).get(usuarioId)).total;
+      if (usosUsuarioAtivos >= configuracao.maxConcorrenciaUsuario) {
+        return { permitida: false, motivo: "concorrencia_usuario", usado: usosUsuarioAtivos, limite: configuracao.maxConcorrenciaUsuario };
+      }
+
+      const usosGlobaisAtivos = (await tx.prepare(`
+        SELECT COUNT(*) AS total FROM ia_usos_reais WHERE status = 'reservada'
+      `).get()).total;
+      if (usosGlobaisAtivos >= configuracao.maxConcorrenciaGlobal) {
+        return { permitida: false, motivo: "concorrencia_global", usado: usosGlobaisAtivos, limite: configuracao.maxConcorrenciaGlobal };
+      }
+
+      const resultado = await tx.prepare(`
+        INSERT INTO ia_usos_reais (
+          usuario_id, ocorrencia_id, fingerprint_entrada, status, modelo, solicitada_em, reservada_ate
+        ) VALUES (?, ?, ?, 'reservada', ?, ?, ?)
+      `).run(usuarioId, ocorrenciaId, fingerprint, modelo, agora, reservadaAte);
+
+      return { permitida: true, usoId: Number(resultado.lastInsertRowid), status: "reservada" };
+    })();
+  }
+
+  async function renovarReservaUsoReal(usoId) {
+    validarId(usoId, "usoId");
+    const agora = obterAgora();
+    const reservadaAte = agora + configuracao.ttlReservaMs;
+    if (!Number.isSafeInteger(reservadaAte)) {
+      throw new RangeError("O prazo da reserva excede o intervalo suportado.");
+    }
+    const resultado = await db.prepare(`
+      UPDATE ia_usos_reais
+      SET reservada_ate = ?
+      WHERE id = ? AND status = 'reservada'
+        AND (reservada_ate > ? OR (reservada_ate IS NULL AND solicitada_em > ?))
+    `).run(reservadaAte, usoId, agora, agora - configuracao.ttlReservaMs);
+    if (resultado.changes !== 1) {
+      return { renovada: false, motivo: "reserva_expirada_ou_encerrada" };
+    }
+    return { renovada: true, usoId, reservadaAte };
+  }
+
+  async function atualizarReserva(usoId, status, campos = {}) {
+    validarId(usoId, "usoId");
+    const resultado = await db.prepare(`
+      UPDATE ia_usos_reais
+      SET status = ?, finalizada_em = ?, reservada_ate = NULL,
+          modelo = COALESCE(?, modelo),
+          tokens_entrada = ?, tokens_saida = ?, codigo_erro = ?
+      WHERE id = ? AND status = 'reservada'
+    `).run(
+      status,
+      obterAgora(),
+      campos.modelo ?? null,
+      campos.tokensEntrada ?? null,
+      campos.tokensSaida ?? null,
+      campos.codigoErro ?? null,
+      usoId,
+    );
+    if (resultado.changes !== 1) throw new Error("A reserva nao existe ou ja foi encerrada.");
+    return { usoId, status };
+  }
+
+  function concluirUsoReal(usoId, { modelo = null, tokensEntrada = null, tokensSaida = null } = {}) {
+    if (modelo !== null && (typeof modelo !== "string" || modelo.length > 100)) {
+      throw new TypeError("O modelo deve ter no maximo 100 caracteres.");
+    }
+    return atualizarReserva(usoId, "concluida", {
+      modelo,
+      tokensEntrada: validarTokens(tokensEntrada, "tokensEntrada"),
+      tokensSaida: validarTokens(tokensSaida, "tokensSaida"),
+    });
+  }
+
+  function registrarFalhaUsoReal(usoId, codigoErro = null) {
+    const codigoSeguro = typeof codigoErro === "string" && /^[a-zA-Z0-9_.-]{1,100}$/.test(codigoErro)
+      ? codigoErro
+      : null;
+    return atualizarReserva(usoId, "falhou", { codigoErro: codigoSeguro });
+  }
+
+  function cancelarReservaUsoReal(usoId) {
+    return atualizarReserva(usoId, "cancelada");
+  }
+
+  return {
+    configuracao: { ...configuracao },
+    reservarUsoReal,
+    renovarReservaUsoReal,
+    concluirUsoReal,
+    registrarFalhaUsoReal,
+    cancelarReservaUsoReal,
+  };
+}
+
 function calcularFingerprintEntrada({ ocorrencia, respostas, modelo, contexto = null }) {
   if (!ocorrencia || typeof ocorrencia !== "object" || Array.isArray(ocorrencia)) {
     throw new TypeError("A ocorrencia da analise e obrigatoria.");
@@ -90,6 +264,9 @@ function calcularFingerprintEntrada({ ocorrencia, respostas, modelo, contexto = 
 
 function criarControleUsoIA({ db = bancoPadrao, configuracao = carregarConfiguracao(), relogio = Date.now } = {}) {
   validarConfiguracao(configuracao);
+  if (db.dialect === "postgres") {
+    return criarControleUsoIAPostgres({ db, configuracao, relogio });
+  }
 
   function obterAgora() {
     const agora = relogio();

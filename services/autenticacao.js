@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const { promisify } = require("util");
-const db = require("../database/database");
+const db = require("../database/connection");
 
 const scrypt = promisify(crypto.scrypt);
 const SCRYPT_OPTIONS = { N: 1 << 14, r: 8, p: 5, maxmem: 64 * 1024 * 1024 };
@@ -31,27 +31,35 @@ async function verificarSenha(senha, salt, hashEsperado) {
   return esperado.length === derivado.length && crypto.timingSafeEqual(derivado, esperado);
 }
 
-async function inicializarAdmin() {
-  const total = db.prepare("SELECT COUNT(*) AS total FROM usuarios").get().total;
+async function inicializarAdmin({ env = process.env } = {}) {
+  const total = (await db.prepare("SELECT COUNT(*) AS total FROM usuarios").get()).total;
   if (total > 0) return;
 
-  const credencial = await criarHashSenha("admin");
+  const senhaConfigurada = env.ADMIN_INITIAL_PASSWORD;
+  const senhaInicial = typeof senhaConfigurada === "string" && senhaConfigurada.length > 0
+    ? senhaConfigurada
+    : env.NODE_ENV === "production" ? null : "admin";
+  if (!validarSenha(senhaInicial)) {
+    throw new Error("Defina ADMIN_INITIAL_PASSWORD com pelo menos 6 caracteres para criar o primeiro administrador em producao.");
+  }
+
+  const credencial = await criarHashSenha(senhaInicial);
   try {
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO usuarios (nome_usuario, senha_hash, senha_salt, papel, deve_trocar_senha)
       VALUES ('admin', ?, ?, 'admin', 1)
     `).run(credencial.hash, credencial.salt);
     console.log("Conta inicial admin criada; a senha deverá ser trocada no primeiro acesso.");
   } catch (erro) {
-    if (erro.code !== "SQLITE_CONSTRAINT_UNIQUE") throw erro;
+    if (!new Set(["SQLITE_CONSTRAINT_UNIQUE", "23505"]).has(erro.code)) throw erro;
   }
 }
 
 async function buscarUsuarioPorCredencial(nomeUsuario, senha) {
   const usuarioNormalizado = normalizarNomeUsuario(nomeUsuario);
-  const usuario = db.prepare(`
+  const usuario = await db.prepare(`
     SELECT id, nome_usuario, senha_hash, senha_salt, papel, ativo, deve_trocar_senha
-    FROM usuarios WHERE nome_usuario = ? COLLATE NOCASE
+    FROM usuarios WHERE LOWER(nome_usuario) = ?
   `).get(usuarioNormalizado);
 
   const hashValido = usuario
@@ -62,14 +70,25 @@ async function buscarUsuarioPorCredencial(nomeUsuario, senha) {
   return usuario;
 }
 
-function criarSessao(usuarioId) {
+function criarSessao(usuarioId, banco = db) {
   const token = crypto.randomBytes(32).toString("hex");
   const csrfToken = crypto.randomBytes(32).toString("hex");
   const expiraEm = Date.now() + DURACAO_SESSAO_MS;
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
-  db.prepare("DELETE FROM sessoes WHERE expira_em <= ?").run(Date.now());
-  db.prepare(`
+  if (banco.dialect === "postgres") {
+    return (async () => {
+      await banco.prepare("DELETE FROM sessoes WHERE expira_em <= ?").run(Date.now());
+      await banco.prepare(`
+    INSERT INTO sessoes (token_hash, usuario_id, csrf_token, expira_em)
+    VALUES (?, ?, ?, ?)
+      `).run(tokenHash, usuarioId, csrfToken, expiraEm);
+      return { token, csrfToken, expiraEm };
+    })();
+  }
+
+  banco.prepare("DELETE FROM sessoes WHERE expira_em <= ?").run(Date.now());
+  banco.prepare(`
     INSERT INTO sessoes (token_hash, usuario_id, csrf_token, expira_em)
     VALUES (?, ?, ?, ?)
   `).run(tokenHash, usuarioId, csrfToken, expiraEm);
@@ -80,21 +99,22 @@ function criarSessao(usuarioId) {
 function buscarSessao(token) {
   if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) return null;
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-  return db.prepare(`
+  const sessao = db.prepare(`
     SELECT s.token_hash, s.csrf_token, s.expira_em,
            u.id, u.nome_usuario, u.papel, u.deve_trocar_senha
     FROM sessoes s
     JOIN usuarios u ON u.id = s.usuario_id
     WHERE s.token_hash = ? AND s.expira_em > ? AND u.ativo = 1
-  `).get(tokenHash, Date.now()) || null;
+  `).get(tokenHash, Date.now());
+  return db.dialect === "postgres" ? sessao.then((valor) => valor || null) : sessao || null;
 }
 
-function revogarSessao(tokenHash) {
-  db.prepare("DELETE FROM sessoes WHERE token_hash = ?").run(tokenHash);
+function revogarSessao(tokenHash, banco = db) {
+  return banco.prepare("DELETE FROM sessoes WHERE token_hash = ?").run(tokenHash);
 }
 
-function revogarSessoesUsuario(usuarioId) {
-  db.prepare("DELETE FROM sessoes WHERE usuario_id = ?").run(usuarioId);
+function revogarSessoesUsuario(usuarioId, banco = db) {
+  return banco.prepare("DELETE FROM sessoes WHERE usuario_id = ?").run(usuarioId);
 }
 
 module.exports = {

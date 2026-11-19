@@ -7,7 +7,8 @@
     "test": "node --test",
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "recuperar-admin": "node scripts/recuperar-admin.js"
+    "recuperar-admin": "node scripts/recuperar-admin.js",
+    "migrar-sqlite-postgres": "node scripts/migrar-sqlite-postgres.js"
   },
   "keywords": [],
   "author": "",
@@ -17,9 +18,11 @@
     "better-sqlite3": "^13.2.0",
     "dotenv": "^18.0.10",
     "express": "^5.3.0",
-    "openai": "^7.59.0"
+    "openai": "^7.59.0",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "supabase": "^3.2.0"
   }
 }

@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../database/database");
+const db = require("../database/connection");
 
 const { compararOcorrencias } = require("../services/compararOcorrencias");
 const {
@@ -10,13 +10,13 @@ const {
 } = require("../services/regrasOcorrencias");
 
 // Cadastrar ocorrência
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   const validacao = validarCadastroOcorrencia(req.body);
   if (validacao.erro) return res.status(400).json({ erro: validacao.erro });
 
   const { titulo, descricao, categoria, prioridade, impacto, frequencia, usuariosAfetados } = validacao.dados;
 
-  const resultado = db
+  const resultado = await db
     .prepare(
       `
     INSERT INTO ocorrencias
@@ -34,8 +34,8 @@ router.post("/", (req, res) => {
 });
 
 // Listar ocorrências
-router.get("/", (req, res) => {
-  const ocorrencias = db
+router.get("/", async (req, res) => {
+  const ocorrencias = await db
     .prepare(
       `
           SELECT * FROM ocorrencias
@@ -48,19 +48,19 @@ router.get("/", (req, res) => {
 });
 
 // Buscar ocorrência por ID
-router.patch("/:id", (req, res) => {
+router.patch("/:id", async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ erro: "ID inválido." });
   }
 
-  const atual = db.prepare("SELECT * FROM ocorrencias WHERE id = ?").get(id);
+  const atual = await db.prepare("SELECT * FROM ocorrencias WHERE id = ?").get(id);
   if (!atual) return res.status(404).json({ erro: "Ocorrência não encontrada." });
 
   const validacao = validarAtualizacaoOcorrencia(req.body, atual);
   if (validacao.erro) return res.status(400).json({ erro: validacao.erro });
   const dados = validacao.dados;
-  db.prepare(`
+  await db.prepare(`
     UPDATE ocorrencias
     SET titulo = ?, descricao = ?, categoria = ?, prioridade = ?,
         impacto = ?, frequencia = ?, usuarios_afetados = ?
@@ -79,13 +79,13 @@ router.patch("/:id", (req, res) => {
   res.json({ mensagem: "Ocorrência atualizada com sucesso!", ocorrencia: { id, ...dados } });
 });
 
-router.get("/:id", (req, res) => {
+router.get("/:id", async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ erro: "ID inválido." });
   }
 
-  const ocorrencia = db
+  const ocorrencia = await db
     .prepare(
       `
           SELECT * FROM ocorrencias
@@ -104,7 +104,7 @@ router.get("/:id", (req, res) => {
 });
 
 // Buscar ocorrências semelhantes
-router.get("/:id/similares", (req, res) => {
+router.get("/:id/similares", async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
@@ -113,7 +113,7 @@ router.get("/:id/similares", (req, res) => {
     });
   }
 
-  const atual = db
+  const atual = await db
     .prepare(
       `
           SELECT * FROM ocorrencias
@@ -128,7 +128,7 @@ router.get("/:id/similares", (req, res) => {
     });
   }
 
-  const anteriores = db
+  const anteriores = await db
     .prepare(
       `
           SELECT id, titulo, descricao, categoria, prioridade, status
@@ -148,7 +148,7 @@ router.get("/:id/similares", (req, res) => {
 });
 
 // Atualizar status da ocorrência
-router.patch("/:id/status", (req, res) => {
+router.patch("/:id/status", async (req, res) => {
   const id = Number(req.params.id);
   const status = req.body?.status;
 
@@ -164,7 +164,7 @@ router.patch("/:id/status", (req, res) => {
     });
   }
 
-  const ocorrencia = db
+  const ocorrencia = await db
     .prepare(
       `
           SELECT id FROM ocorrencias WHERE id = ?
@@ -178,7 +178,7 @@ router.patch("/:id/status", (req, res) => {
     });
   }
 
-  db.prepare(
+  await db.prepare(
     `
           UPDATE ocorrencias
           SET status = ?

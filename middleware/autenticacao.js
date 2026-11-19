@@ -7,10 +7,10 @@ function lerCookie(req, nome) {
   return cookie ? cookie.trim().slice(prefixo.length) : "";
 }
 
-function carregarSessao(req, res, next) {
+async function carregarSessao(req, res, next) {
   try {
     const token = lerCookie(req, "repromind.sid");
-    req.sessao = token ? buscarSessao(token) : null;
+    req.sessao = token ? await buscarSessao(token) : null;
     req.tokenSessao = token || null;
     req.usuario = req.sessao
       ? {

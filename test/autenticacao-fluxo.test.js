@@ -7,6 +7,8 @@ const vm = require("node:vm");
 
 const diretorioTemporario = mkdtempSync(path.join(os.tmpdir(), "repromind-auth-"));
 process.env.DATABASE_PATH = path.join(diretorioTemporario, "teste.db");
+process.env.DATABASE_DRIVER = "sqlite";
+process.env.NODE_ENV = "test";
 
 const express = require("express");
 const db = require("../database/database");
@@ -145,4 +147,9 @@ test("login, alteração de senha, CSRF e limites de tentativas funcionam via HT
     assert.equal((await login(`ip-${tentativa}`, "incorreta")).status, 401);
   }
   assert.equal((await login("mais-uma-conta", "incorreta")).status, 429);
+
+  const tentativasSalvas = db.prepare("SELECT escopo, chave_hash FROM tentativas_login").all();
+  assert.ok(tentativasSalvas.length > 0);
+  assert.ok(tentativasSalvas.every((tentativa) => /^[a-f0-9]{64}$/.test(tentativa.chave_hash)));
+  assert.ok(!JSON.stringify(tentativasSalvas).includes("bloqueado"));
 });
